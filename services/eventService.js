@@ -1,6 +1,4 @@
-
 const pool = require('../config/db');
-
 
 async function createEvent(req, res, next) {
     const { title, date, capacity, location } = req.body;
@@ -35,6 +33,26 @@ async function registerForEvent(req, res, next) {
 
     eventId = parseInt(eventId);
 
+    const existingRegistration = await pool.query(
+        'select r.id from registrations r join users u on r.userId = u.id where r.eventId = $1 and u.email = $2',
+        [eventId, email]
+    );
+    if (existingRegistration.rows.length > 0) {
+        return res.status(400).json({ status: 400, error: 'User already registered for this event' });
+    }
+    
+    const registrations = await pool.query('select count(*) from registrations where eventId = $1', [eventId]);
+    const totalRegistrations = parseInt(registrations.rows[0].count, 10);
+    const event = await pool.query('select capacity from events where id = $1', [eventId]);
+    if (totalRegistrations >= event.rows[0].capacity) {
+        return res.status(400).json({ status: 400, error: 'Event capacity is full' });
+    }
+
+    const eventDate = await pool.query('select date from events where id = $1', [eventId]);
+    if (new Date(eventDate.rows[0].date) < new Date()) {
+        return res.status(400).json({ status: 400, error: 'Cannot register for past events' });
+    }   
+
     let userId;
         const userResult = await pool.query('select id from users where email = $1', [email]);
         if (userResult && userResult.rows.length > 0) {
@@ -53,27 +71,35 @@ async function registerForEvent(req, res, next) {
 
     try {
         const result = await pool.query(
-            'insert into registrations (eventId, userId) values ($1, $2) returning registration_id',
+            'insert into registrations (eventId, userId) values ($1, $2) returning id',
             [eventId, userId]
         );
-        res.status(201).json({ status: 201, data: { registrationId: result.rows[0].registration_id } });
+        res.status(201).json({ status: 201, data: { registrationId: result.rows[0].id } });
     } catch (error) {
         next(error);
     }
 }
 
 async function cancelEventRegistration(req, res, next) {
-    const registrationId = req.params.id;
+    let  eventId = req.params.id;
+    const userId = req.body.id;
 
-    if (!registrationId) {
-        return res.status(400).json({ status: 400, error: 'Registration id is required' });
+     if (!eventId || !userId) {
+        return res.status(400).json({ status: 400, error: 'Event id and user id are required' });
     }
-    const result = await pool.query('delete from registrations where id = $1 returning id', [registrationId]);
+
+    eventId = parseInt(eventId);
+   
+    const registration = await pool.query('select id from registrations where userId = $1 and eventId = $2', [userId, eventId]);
+    if (registration.rows.length === 0) {
+        return res.status(404).json({ status: 404, error: 'Registration not found for this user' });
+    }
+
+    const result = await pool.query('delete from registrations where id = $1 returning id', [registration.rows[0].id]);
     if (result.rows.length === 0) {
         return res.status(404).json({ status: 404, error: 'Registration not found' });
     }
-    res.status(200).json({ status: 200, data: { id: result.rows[0].id } });
-
+    res.status(200).json({ status: 200, data: { registrationId: result.rows[0].id } });
 }
 
 async function listUpcomingEvents(req, res, next) {

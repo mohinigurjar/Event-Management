@@ -3,15 +3,11 @@ const express = require('express');
 const app = express();
 require('dotenv').config();
 const pool = require('./config/db');
+eventRouter = require('./routes/eventRoutes');
 
+app.use(express.json());
+app.use('/api', eventRouter);
 
-// Connect to the database
-// connectDB();
-
-
-// app.listen(process.env.PORT, () => {
-//   console.log(`Server is running on port ${process.env.PORT}`);
-// });
 
 pool.connect()
 .then(() => {
@@ -24,3 +20,4 @@ pool.connect()
     console.error('Failed to connect to the database', err);
     
 });
+

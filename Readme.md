@@ -22,7 +22,7 @@ node app.js
 </code></pre>
 
 
-## APIs
+# APIs
 
 <ul>
 <li> POST - /api/events - for creating events
@@ -32,6 +32,23 @@ node app.js
 <li> PUT - /api/events/:id/register - for registering a user for an event 
 <li> PUT - /api/events/:id/cancel-registration - for cancelling a particular registration
 </ul>
+
+
+# Example
+
+For creating an event, use postman and send the /api/events API endpoint with post method, sending JSON body:
+
+<pre><code>
+{
+    "title" : "Christmas",
+    "location" : "Agra",
+    "capacity" : 100,
+    "date" : "30-10-25"
+}
+</code></pre>
+
+And in response a row will be added in the events table with the given details including a unique id too.
+
 
 
 
